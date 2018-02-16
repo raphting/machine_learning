@@ -1,8 +1,8 @@
 package main
 
 import (
-	"gonum.org/v1/gonum/mat"
 	"fmt"
+	"gonum.org/v1/gonum/mat"
 )
 
 func main() {
