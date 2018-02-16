@@ -15,72 +15,114 @@ func main() {
 	d := []float64{1, 1, 1, 1, 1}
 	A := mat.NewDiagonal(5, d)
 	fc := mat.Formatted(A.T(), mat.Prefix("    "), mat.Squeeze())
-	fmt.Printf("c = %v\n", fc)
+	fmt.Printf("A = %v\n", fc)
 
-	// Ex. 2
+	// Ex. 2.1
 	population, profit := loadData()
-	dimensions := 2
-	persist := false
-	debug := false
-	plot, _ := glot.NewPlot(dimensions, persist, debug)
-	plot.AddPointGroup("data", "points", [][]float64{population, profit})
-	plot.SetXLabel("Population of City in 10,000s")
-	plot.SetYLabel("Profit in $10,000s")
-	plot.SavePlot("src/github.com/raphting/machine_learning/plot/ex1.png")
 
+	// Ex. 2.2
 	m := len(profit)
 	ones := make([]float64, m)
 	for k := range ones {
 		ones[k] = 1
-	}
+		}
 
 
 	// Create Feature Vector including ones
 	X := mat.NewDense(m, 2, nil)
 	X.SetCol(0, ones)
 	X.SetCol(1, population)
-	fc = mat.Formatted(X, mat.Prefix("    "), mat.Squeeze())
-	fmt.Printf("c = %v\n", fc)
+	// Create trained data
+	y := mat.NewDense(m, 1, profit)
+	// Create start values for theta
+	theta := mat.NewDense(2, 1, []float64{0, 0})
+
+	// Create dummy cost for tests (should be ~32.07)
+	cost := calcCost(X, y, theta)
+	fmt.Println("Cost: ", cost)
 
 	iterations := 1500
 	alpha := 0.01
-	theta0 := float64(0)
-	theta1 := float64(0)
-	for i := 0; i < iterations; i++ {
-		e0 := float64(0)
-		for c := 0; c < m; c++ {
-			e0 += (theta0 + (theta1 * population[c])) - profit[c]
-		}
-		tmp0 := theta0 - (alpha * (e0 / float64(m)))
+	theta = gradientDescent(X, y, theta, alpha, iterations)
+	plotData(population, profit, theta, "src/github.com/raphting/machine_learning/plot/ex1.png")
 
-		e1 := float64(0)
-		for c := 0; c < m; c++ {
-			e1 += (theta0 + (theta1 * population[c]) - profit[c]) * population[c]
-		}
-		tmp1 := theta1 - (alpha * (e1 / float64(m)))
+	// Predictions
+	pred1 := mat.NewDense(1, 2, []float64{1, 3.5})
+	pred2 := mat.NewDense(1, 2, []float64{1, 7})
 
-		theta0 = tmp0
-		theta1 = tmp1
-	}
+	res := mat.NewDense(1, 1, nil)
+	res.Mul(pred1, theta)
+	fc = mat.Formatted(res, mat.Prefix("    "), mat.Squeeze())
+	fmt.Printf("Prediction1 = %v\n", fc)
 
-	fmt.Println(theta0, theta1)
-	cost := float64(0)
-	for c := 0; c < m; c++ {
-		cost += math.Pow(((theta0 + (theta1 * population[c])) - profit[c]), 2)
-	}
-	cost = cost / (float64(2*m))
-	fmt.Println("Cost: ", cost)
+	res.Mul(pred2, theta)
+	fc = mat.Formatted(res, mat.Prefix("    "), mat.Squeeze())
+	fmt.Printf("Prediction2 = %v\n", fc)
+}
 
+func plotData(x, y []float64, theta *mat.Dense, path string) {
+	dimensions := 2
+	persist := false
+	debug := false
+	plot, _ := glot.NewPlot(dimensions, persist, debug)
+	plot.AddPointGroup("data", "points", [][]float64{x, y})
+	plot.SetXLabel("Population of City in 10,000s")
+	plot.SetYLabel("Profit in $10,000s")
 
+	theta0 := theta.At(0,0)
+	theta1 := theta.At(1, 0)
 	fct := func(x float64) float64 { return (theta0 + theta1 * x) }
 	groupName := "Linear Regression"
 	style := "lines"
 	pointsX := []float64{}
-	for xx := float64(0); xx < 25; xx += 0.1 {
+	for xx := float64(3); xx < 25; xx += 0.1 {
 		pointsX = append(pointsX, xx)
 	}
 	plot.AddFunc2d(groupName, style, pointsX, fct)
-	plot.SavePlot("src/github.com/raphting/machine_learning/plot/ex1.png")
+	plot.SavePlot(path)
+}
+
+func calcCost(X, y, theta *mat.Dense) float64 {
+	m, _ := y.Dims()
+	cost := float64(0)
+	for i := 0; i < m; i++ {
+		J := mat.NewDense(1, 1, []float64{cost})
+		J.Mul(theta.T(), X.RowView(i))
+		cost += math.Pow(J.At(0,0) - y.At(i, 0), 2)
+	}
+	return cost / float64(2*m)
+}
+
+func gradientDescent(X, y, theta *mat.Dense, alpha float64, iters int) *mat.Dense {
+	m, _ := y.Dims()
+	rate := alpha / float64(m)
+
+	for i := 0; i < iters; i++ {
+		theta = calcTheta(rate, X, y, theta)
+	}
+	return theta
+}
+
+func calcTheta(rate float64, X, y, theta *mat.Dense) *mat.Dense {
+	m, _ := y.Dims()
+	cost0 := float64(0)
+	cost1 := float64(0)
+
+	theta0 := theta.At(0, 0)
+	theta1 := theta.At(1, 0)
+
+	for i := 0; i < m; i++ {
+		J := mat.NewDense(1, 1, nil)
+		J.Mul(theta.T(), X.RowView(i)) // a + bx
+		h := J.At(0, 0)
+
+		cost0 +=  h - y.At(i, 0)                  // E (h(x) - y)
+		cost1 += (h - y.At(i, 0)) * X.At(i, 1) // E (h(x) - y) * x
+	}
+
+	theta0 = theta0 - rate * cost0
+	theta1 = theta1 - rate * cost1
+	return mat.NewDense(2, 1, []float64{theta0, theta1})
 }
 
 func loadData() ([]float64, []float64) {
