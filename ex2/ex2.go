@@ -2,75 +2,56 @@ package ex2
 
 import (
 	"fmt"
-	"strings"
-	"io/ioutil"
-	"strconv"
-	"github.com/Arafatk/glot"
+	"github.com/cdipaolo/goml/linear"
+	"github.com/cdipaolo/goml/base"
 )
 
 func Ex2() {
-	fmt.Println("Ex2")
-	denied, admitted := loadScoring()
-	
-	deniedX := make([]float64, len(denied))
-	deniedY := make([]float64, len(denied))
-	for d := range denied {
-		deniedX[d] = denied[d][0]
-		deniedY[d] = denied[d][1]
-	}
-
-	admittedX := make([]float64, len(admitted))
-	admittedY := make([]float64, len(admitted))
-	for d := range admitted {
-		admittedX[d] = admitted[d][0]
-		admittedY[d] = admitted[d][1]
-	}
-
-	dimensions := 2
-	persist := false
-	debug := false
-	plot, _ := glot.NewPlot(dimensions, persist, debug)
-	plot.AddPointGroup("denied", "points", [][]float64{deniedX, deniedY})
-	plot.AddPointGroup("admitted", "circle", [][]float64{admittedX, admittedY})
-	plot.SetXLabel("Exam1 Score")
-	plot.SetYLabel("Exam2 Score")
-	plot.SavePlot("src/github.com/raphting/machine_learning/plot/ex2.png")
-	plot.Close()
-	fmt.Println("Done.")
+	exams()
+	chips()
 }
 
-func loadScoring() ([][]float64, [][]float64) {
-	d, err := ioutil.ReadFile("src/github.com/raphting/machine_learning/data/ex2data1.txt")
+func exams() {
+	x, y, err := base.LoadDataFromCSV("src/github.com/raphting/machine_learning/data/ex2data1.txt")
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	data := string(d)
-	split := strings.Split(data, "\n")
-	split = split[:len(split)-1] // ACHTUNG!!!
-
-	denied := make([][]float64, 0)
-	admitted := make([][]float64, 0)
-	for _, s := range split {
-		tmp := strings.Split(s, ",")
-
-		x1, _ := strconv.ParseFloat(tmp[0], 64)
-		x2, _ := strconv.ParseFloat(tmp[1], 64)
-		pos := []float64{x1, x2}
-
-		// Denied
-		if tmp[2] == "0" {
-			denied = append(denied, pos)
-			continue
-		}
-
-		// Admitted
-		if tmp[2] == "1" {
-			admitted = append(admitted, pos)
-		}
+	logistic := linear.NewLogistic(base.BatchGA, 0.001, 0,800, x, y)
+	err = logistic.Learn()
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 
-	fmt.Println("Denied: ", len(denied))
-	fmt.Println("Admitted: ", len(admitted))
-	return denied, admitted
+
+	// Prediction
+	pred := []float64{45, 85}
+	p, err := logistic.Predict(pred)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Printf("%f\n", p[0])
+}
+
+func chips() {
+	x, y, err := base.LoadDataFromCSV("src/github.com/raphting/machine_learning/data/ex2data2.txt")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	logistic := linear.NewLogistic(base.BatchGA, 0.001, 0, 800, x, y)
+	err = logistic.Learn()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+
+	// Prediction
+	pred := []float64{-0.25, 1.5}
+
+	p, err := logistic.Predict(pred)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Printf("%f\n", p[0])
 }
