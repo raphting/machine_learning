@@ -8,6 +8,7 @@ import (
 	"github.com/cdipaolo/goml/linear"
 	"github.com/cdipaolo/goml/base"
 	"time"
+	"math"
 )
 
 func Ex3() {
@@ -60,6 +61,60 @@ func Ex3() {
 	}
 }
 
+func Ex3_nn() {
+	x, y := loadData()
+	th1, th2 := loadTheta()
+
+	correct := make([]int, 10)
+	wrong := make([]int, 10)
+	for cntX := range x {
+		predX := x[cntX]
+
+		// Predict
+		// Bias = 1
+		predX = append([]float64{1}, predX...)
+		hidden1 := make([]float64, 25)
+		// 1st hidden layer
+		for h := range hidden1 {
+			for xx := range predX {
+				hidden1[h] += predX[xx] * th1[h][xx]
+			}
+			hidden1[h] = sigmoid(hidden1[h])
+		}
+
+		// Bias output = 1
+		hidden1 = append([]float64{1}, hidden1...)
+		output := make([]float64, 10)
+		// Output layer
+		for o := range output {
+			for h := range hidden1 {
+				output[o] += hidden1[h] * th2[o][h]
+			}
+		}
+
+		biggest := output[0]
+		resNum := 0
+		for k, v := range output {
+			if v > biggest {
+				biggest = v
+				resNum = k
+			}
+		}
+
+		expected := int(y[cntX])
+		if resNum + 1 == expected {
+			correct[expected-1]++
+			continue
+		}
+		wrong[expected-1]++
+	}
+
+	fmt.Println("Correct: ", correct, " Wrong: ", wrong)
+}
+
+func sigmoid(z float64) float64 {
+	return 1 / (1 + math.Exp(-z))
+}
 
 func loadData() ([][]float64, []float64) {
 	d, err := ioutil.ReadFile("src/github.com/raphting/machine_learning/data/ex3data1_X.txt")
@@ -103,4 +158,52 @@ func loadData() ([][]float64, []float64) {
 	fmt.Println("Y is ", len(y))
 
 	return x, y
+}
+
+func loadTheta() ([][]float64, [][]float64) {
+	d, err := ioutil.ReadFile("src/github.com/raphting/machine_learning/data/ex3data1_Th1.txt")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	data := string(d)
+	split := strings.Split(data, "\n")
+
+	th1 := make([][]float64, len(split))
+	for k, s := range split {
+		tmp := strings.Split(s, " ")
+		tmp = tmp[1:]
+
+		row := make([]float64, len(tmp))
+		for t := range tmp {
+			i, _ := strconv.ParseFloat(tmp[t], 64)
+			row[t] = i
+		}
+		th1[k] = row
+	}
+
+	d, err = ioutil.ReadFile("src/github.com/raphting/machine_learning/data/ex3data1_Th2.txt")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	data = string(d)
+	split = strings.Split(data, "\n")
+
+	th2 := make([][]float64, len(split))
+	for k, s := range split {
+		tmp := strings.Split(s, " ")
+		tmp = tmp[1:]
+
+		row := make([]float64, len(tmp))
+		for t := range tmp {
+			i, _ := strconv.ParseFloat(tmp[t], 64)
+			row[t] = i
+		}
+		th2[k] = row
+	}
+
+	fmt.Println("Th1 is ", len(th1), " X ", len(th1[0]))
+	fmt.Println("Th2 is ", len(th2), " X ", len(th2[0]))
+	return th1, th2
 }
