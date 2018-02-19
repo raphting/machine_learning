@@ -129,7 +129,7 @@ func loadData() ([][]float64, []float64) {
 	x := make([][]float64, len(split))
 	for k, s := range split {
 		tmp := strings.Split(s, " ")
-		tmp = tmp[:len(tmp)-1]
+		tmp = tmp[1:]
 
 		row := make([]float64, len(tmp))
 		for t := range tmp {
